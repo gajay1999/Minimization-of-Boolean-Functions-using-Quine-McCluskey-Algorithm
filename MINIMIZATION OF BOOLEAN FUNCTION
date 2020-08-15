@@ -1,0 +1,453 @@
+/*MINIMIZATION OF BOOLEAN FUNCTIONS
+
+The program displays the minimized boolean function
+for the given minterms and don't-care terms using
+Quine McCluskey Algorithm. It chooses the number of
+variables based on the largest term among the minterms
+and don'y-care terms.
+
+The Minimized Boolean Function is given in Sum of
+Products (SOP) form and the significance of bits is
+as follows: (Leftmost - MSB ; Rightmost - LSB)
+
+2 Bits - AB
+3 Bits - ABC
+4 Bits - ABCD
+
+
+A MINI PROJECT BY
+
+AJAY G
+
+*/
+
+
+#include<bits/stdc++.h>
+using namespace std;
+
+string int_to_bin(int x,int n)                  //Converts an integer into a binary string
+{
+    int rem;
+    string str="";
+    while(x)
+    {
+        rem=x%2;
+        x=x/2;
+        str=to_string(rem)+str;
+    }
+    while(str.length()!=n)
+    {
+        str="0"+str;
+    }
+    return str;
+}
+
+int ones_in_bin(string str)                     //Counts the number of ones in a binary string
+{
+    int i,ones=0;
+    for(i=0;i<str.length();i++)
+    {
+        if(str[i]=='1')
+        ones++;
+    }
+    return ones;
+}
+
+bool one_bit_change(string s1,string s2)        //Checks for one bit change between two binary strings
+{
+    int i,change=0;
+    for(i=0;i<s1.size();i++)
+    {
+        if(s1[i]!=s2[i])
+            change++;
+    }
+    return (change==1);
+}
+
+string modify_str(string s1,string s2)          //Changes the different bit into an underscore
+{
+    int i;
+    for(i=0;i<s1.length();i++)
+    {
+        if(s1[i]!=s2[i])
+        {
+            s1[i]='_';
+            break;
+        }
+    }
+    return s1;
+}
+
+vector<int> combine_terms(vector<int> terms1,vector<int> terms2)                    //Combines two vectors
+{
+    int i;
+    vector<int>terms;
+    for(i=0;i<terms1.size();i++)
+    {
+        terms.push_back(terms1[i]);
+    }
+    for(i=0;i<terms2.size();i++)
+    {
+        terms.push_back(terms2[i]);
+    }
+    return terms;
+}
+
+bool found_all_essential_prime_implicants(char** imp_chart,int row,int col)         //Checks if all essential prime implicants are found
+{
+    int i,j;
+    for(i=0;i<row;i++)
+    {
+        for(j=0;j<col;j++)
+        {
+            if(imp_chart[i][j]=='x')
+                return false;
+        }
+    }
+    return true;
+}
+
+void quine_McCluskey(vector<int>&min_terms,vector<int>&dont_cares)                  //Implements Quine-McCluskey Algorithm
+{
+    int i,j,k;
+    int max_term,no_of_bits;
+    if(dont_cares.size()!=0)
+        max_term=max(*max_element(min_terms.begin(),min_terms.end()),*max_element(dont_cares.begin(),dont_cares.end()));
+    else
+        max_term=*max_element(min_terms.begin(),min_terms.end());
+
+    if(max_term<4)
+        no_of_bits=2;
+    else if(max_term<8)
+        no_of_bits=3;
+    else if(max_term<16)
+        no_of_bits=4;
+    else
+    {
+        cout<<"Maximum term allowed is 15 (4 bits)"<<endl;
+        return;
+    }
+
+    vector<pair<pair<vector<int>,bool>,string>> min_binary,dont_binary;
+    vector<int>term;
+    string str;
+
+    for(i=0;i<min_terms.size();i++)             //Conversion from decimal to binary
+    {
+        str=int_to_bin(min_terms[i],no_of_bits);
+        term.push_back(min_terms[i]);
+        min_binary.push_back({{term,false},str});
+        term.clear();
+    }
+
+    for(i=0;i<dont_cares.size();i++)            //Conversion from decimal to binary
+    {
+        str=int_to_bin(dont_cares[i],no_of_bits);
+        term.push_back(dont_cares[i]);
+        dont_binary.push_back({{term,false},str});
+        term.clear();
+    }
+
+    vector<vector<pair<pair<vector<int>,bool>,string>>>one_bits(5);
+    int no_of_ones;
+
+    for(i=0;i<min_binary.size();i++)            //Separation based on number of ones
+    {
+        no_of_ones=ones_in_bin(min_binary[i].second);
+        if(no_of_ones==0)
+            one_bits[0].push_back(min_binary[i]);
+        else if(no_of_ones==1)
+            one_bits[1].push_back(min_binary[i]);
+        else if(no_of_ones==2)
+            one_bits[2].push_back(min_binary[i]);
+        else if(no_of_ones==3)
+            one_bits[3].push_back(min_binary[i]);
+        else
+            one_bits[4].push_back(min_binary[i]);
+    }
+
+    for(i=0;i<dont_binary.size();i++)           //Separation based on number of ones
+    {
+        no_of_ones=ones_in_bin(dont_binary[i].second);
+        if(no_of_ones==0)
+            one_bits[0].push_back(dont_binary[i]);
+        else if(no_of_ones==1)
+            one_bits[1].push_back(dont_binary[i]);
+        else if(no_of_ones==2)
+            one_bits[2].push_back(dont_binary[i]);
+        else if(no_of_ones==3)
+            one_bits[3].push_back(dont_binary[i]);
+        else
+            one_bits[4].push_back(dont_binary[i]);
+    }
+
+    vector<vector<pair<pair<vector<int>,bool>,string>>> table_ones;
+
+    for(i=0;i<5;i++)                            //Formation of table based on number of ones
+    {
+        if(one_bits[i].size()!=0)
+            table_ones.push_back(one_bits[i]);
+    }
+
+    vector<pair<string,vector<int>>> prime_implicants,essential_prime_implicants;
+    vector<vector<pair<pair<vector<int>,bool>,string>>> table;
+    vector<pair<pair<vector<int>,bool>,string>> sub_table;
+    string mod_str;
+
+    while(table_ones.size()!=1)                 //Reduction of table to obtain prime implicants
+    {
+        for(i=0;i<table_ones.size()-1;i++)
+        {
+            for(j=0;j<table_ones[i].size();j++)
+            {
+                for(k=0;k<table_ones[i+1].size();k++)
+                {
+                    if(one_bit_change(table_ones[i][j].second,table_ones[i+1][k].second))
+                    {
+                        table_ones[i][j].first.second=true;
+                        table_ones[i+1][k].first.second=true;
+                        mod_str=modify_str(table_ones[i][j].second,table_ones[i+1][k].second);
+                        term=combine_terms(table_ones[i][j].first.first,table_ones[i+1][k].first.first);
+                        sub_table.push_back({{term,false},mod_str});
+                    }
+                }
+            }
+            table.push_back(sub_table);
+            sub_table.clear();
+        }
+        for(i=0;i<table_ones.size();i++)        //Checking for prime implicants in first and intermediate tables
+        {
+            for(j=0;j<table_ones[i].size();j++)
+            {
+                if(table_ones[i][j].first.second==false)
+                {
+                    sort(table_ones[i][j].first.first.begin(),table_ones[i][j].first.first.end());
+                    if(find(prime_implicants.begin(),prime_implicants.end(),make_pair(table_ones[i][j].second,table_ones[i][j].first.first))==prime_implicants.end())
+                    prime_implicants.push_back({table_ones[i][j].second,table_ones[i][j].first.first});
+                }
+
+            }
+        }
+        table_ones=table;
+        table.clear();
+    }
+
+    for(i=0;i<table_ones[0].size();i++)         //Checking for prime implicants in the final table
+    {
+        if(find(prime_implicants.begin(),prime_implicants.end(),make_pair(table_ones[0][i].second,table_ones[0][i].first.first))==prime_implicants.end())
+        {
+            prime_implicants.push_back({table_ones[0][i].second,table_ones[0][i].first.first});
+        }
+    }
+
+    char** imp_chart=new char*[prime_implicants.size()];            //Creation of prime implicant chart
+    for(i=0;i<prime_implicants.size();i++)
+    {
+        imp_chart[i]=new char[min_terms.size()];
+        for(j=0;j<min_terms.size();j++)
+        {
+            imp_chart[i][j]='.';
+        }
+    }
+
+    for(i=0;i<prime_implicants.size();i++)                          //Initialization of prime implicant chart
+    {
+        for(j=0;j<min_terms.size();j++)
+        {
+            if(find(prime_implicants[i].second.begin(),prime_implicants[i].second.end(),min_terms[j])!=prime_implicants[i].second.end())
+            imp_chart[i][j]='x';
+        }
+    }
+
+    vector<pair<int,vector<int>>> no_cross_col,no_cross_row;
+    int no_cross;
+    term.clear();
+
+    for(i=0;i<min_terms.size();i++)                                 //Counting 'x's in each column
+    {
+        no_cross=0;
+        for(j=0;j<prime_implicants.size();j++)
+        {
+            if(imp_chart[j][i]=='x')
+            {
+                no_cross++;
+                term.push_back(j);
+            }
+        }
+        no_cross_col.push_back({no_cross,term});
+        term.clear();
+    }
+
+    for(i=0;i<no_cross_col.size();i++)                              //clearing 'x's in rows with an essential prime implicant
+    {
+        if(no_cross_col[i].first==1)                                 //Checking for a column with only one 'x'
+        {
+            if(find(essential_prime_implicants.begin(),essential_prime_implicants.end(),prime_implicants[no_cross_col[i].second[0]])==essential_prime_implicants.end())
+            essential_prime_implicants.push_back(prime_implicants[no_cross_col[i].second[0]]);
+            for(j=0;j<min_terms.size();j++)
+            {
+                if(imp_chart[no_cross_col[i].second[0]][j]=='x')
+                {
+                    term.push_back(j);
+                    imp_chart[no_cross_col[i].second[0]][j]='.';
+                }
+            }
+        }
+    }
+
+    for(i=0;i<term.size();i++)                                      //clearing 'x's in columns with cleared 'x's
+    {
+        for(j=0;j<prime_implicants.size();j++)
+        {
+            imp_chart[j][term[i]]='.';
+        }
+    }
+    term.clear();
+
+    int max_cross,max_cross_row;
+    while(!found_all_essential_prime_implicants(imp_chart,prime_implicants.size(),min_terms.size()))
+    {
+        max_cross=0;
+
+        for(i=0;i<prime_implicants.size();i++)                      //Counting number of'x's in each row
+        {
+            no_cross=0;
+            for(j=0;j<min_terms.size();j++)
+            {
+                if(imp_chart[i][j]=='x')
+                {
+                    no_cross++;
+                    term.push_back(j);
+                }
+            }
+            no_cross_row.push_back({no_cross,term});
+            term.clear();
+        }
+
+        for(i=0;i<no_cross_row.size();i++)                          //Checking for a row with maximum number of 'x's
+        {
+            if(no_cross_row[i].first>max_cross)
+            {
+                max_cross=no_cross_row[i].first;
+                max_cross_row=i;
+            }
+        }
+
+        no_cross_row.clear();
+
+        if(find(essential_prime_implicants.begin(),essential_prime_implicants.end(),prime_implicants[max_cross_row])==essential_prime_implicants.end())
+        essential_prime_implicants.push_back(prime_implicants[max_cross_row]);
+
+        for(i=0;i<min_terms.size();i++)                             //clearing 'x's in rows with an essential prime implicant
+        {
+            if(imp_chart[max_cross_row][i]=='x')
+            {
+                term.push_back(i);
+                imp_chart[max_cross_row][i]='.';
+            }
+        }
+
+        for(i=0;i<term.size();i++)                                  //clearing 'x's in columns with cleared 'x's
+        {
+            for(j=0;j<prime_implicants.size();j++)
+            {
+                imp_chart[j][term[i]]='.';
+            }
+        }
+
+        term.clear();
+    }
+
+    vector<string>boolean_terms;
+
+    for(i=0;i<essential_prime_implicants.size();i++)                //Conversion from binary to boolean expression
+    {
+        str="";
+        for(j=0;j<essential_prime_implicants[i].first.length();j++)
+        {
+            if(j==0)
+            {
+                if(essential_prime_implicants[i].first[j]=='1')
+                    str=str+'A';
+                else if(essential_prime_implicants[i].first[j]=='0')
+                    str=str+"A'";
+            }
+            else if(j==1)
+            {
+                if(essential_prime_implicants[i].first[j]=='1')
+                    str=str+'B';
+                else if(essential_prime_implicants[i].first[j]=='0')
+                    str=str+"B'";
+            }
+            else if(j==2)
+            {
+                if(essential_prime_implicants[i].first[j]=='1')
+                    str=str+'C';
+                else if(essential_prime_implicants[i].first[j]=='0')
+                    str=str+"C'";
+            }
+            else
+            {
+                if(essential_prime_implicants[i].first[j]=='1')
+                    str=str+'D';
+                else if(essential_prime_implicants[i].first[j]=='0')
+                    str=str+"D'";
+            }
+        }
+        boolean_terms.push_back(str);
+    }
+    cout<<endl;
+    cout<<"Minimized Boolean Function : ";
+    cout<<"Y = ";
+    for(i=0;i<boolean_terms.size();i++)                 //Printing the boolean function
+    {
+        cout<<boolean_terms[i];
+        if(i!=boolean_terms.size()-1)
+            cout<<" + ";
+    }
+
+    if(essential_prime_implicants.size()==1)            //Checking if the function is equal to '1'
+    {
+        str="";
+        for(i=0;i<no_of_bits;i++)
+            str=str+'_';
+        if(essential_prime_implicants[0].first==str)
+        {
+            cout<<"1";
+        }
+    }
+    cout<<endl;
+}
+
+int main()                                              //Main Function
+{
+    cout<<"MINIMIZATION OF BOOLEAN FUNCTIONS"<<endl<<endl;
+
+    int i,no_of_min,no_of_dont,temp;
+    vector<int> min_terms,dont_cares;
+
+    cout<<"Enter the number of Minterms : ";
+    cin>>no_of_min;
+    cout<<endl;
+
+    cout<<"Enter "<<no_of_min<<" Minterms : ";
+    for(i=0;i<no_of_min;i++)
+    {
+        cin>>temp;
+        min_terms.push_back(temp);
+    }
+    cout<<endl;
+
+    cout<<"Enter the number of Don't-care Terms : ";
+    cin>>no_of_dont;
+    cout<<endl;
+
+    if(no_of_dont>0)
+    cout<<"Enter "<<no_of_dont<<" Don't-care Terms : ";
+    for(i=0;i<no_of_dont;i++)
+    {
+        cin>>temp;
+        dont_cares.push_back(temp);
+    }
+    quine_McCluskey(min_terms,dont_cares);
+}
